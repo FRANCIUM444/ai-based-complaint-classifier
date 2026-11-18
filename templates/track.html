@@ -1,0 +1,67 @@
+{% extends "base.html" %}{% block title %}{{ t('nav_track') }}{% endblock %}{% block content %}
+<section class="page-head"><p class="eyebrow">{{ t('tracking_eyebrow') }}</p><h1>{{ t('tracking_heading_first') }}<br><span>{{ t('tracking_heading_second') }}</span></h1><p class="muted">{{ t('tracking_copy') }}</p></section>
+<form method="post" class="track-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label for="complaint_id">{{ t('complaint_id') }}</label><div class="inline-input"><input id="complaint_id" name="complaint_id" type="number" min="1" required placeholder="e.g. 12"><button class="button">{{ t('find_complaint') }} ↗</button></div></form>
+{% if searched %}{% if complaint %}<section class="track-result"><div class="track-top"><div><small>COMPLAINT #{{ complaint.id }}</small><h2>{{ t(category_key(complaint.category)) }}</h2></div><span class="status status-{{ complaint.status|lower|replace(' ', '-') }}">{{ t(complaint.status|lower|replace(' ', '_')) }}</span></div><p>{{ complaint.complaint_text }}</p>
+<div class="result-grid"><div><small>{{ t('priority') }}</small><strong class="priority-{{ complaint.priority|lower }}">{{ t(complaint.priority|lower) }}</strong></div><div><small>{{ t('submitted_at') }}</small><strong>{{ complaint.created_at }}</strong></div></div>
+<section class="timeline-card" id="complaintTimeline" data-endpoint="{{ url_for('complaint_timeline', complaint_id=complaint.id) }}" data-language="{{ language }}">
+<div class="timeline-heading"><div><h3>{{ t('timeline') }}</h3><span>{{ t('live_updates') }}</span></div><span class="timeline-live"><i></i> LIVE</span></div>
+<ol class="timeline-list" id="timelineList">{% for event in timeline %}<li data-event-type="{{ event.event_type }}" data-status="{{ event.status or '' }}" data-created-at="{{ event.created_at }}"><span class="timeline-marker" aria-hidden="true"></span><div><strong>{% if event.event_type == 'escalation' %}{{ t('timeline_escalated') }}{% elif event.event_type == 'attachment' %}{{ t('timeline_attachment') }}{% elif event.event_type == 'rating' %}{{ t('timeline_rating') }}{% elif loop.first %}{{ t('timeline_submitted') }}{% else %}{{ t('timeline_status', status=t((event.status or 'pending')|lower|replace(' ', '_'))) }}{% endif %}</strong><time>{{ event.created_at }}</time></div></li>{% endfor %}</ol>
+<p class="timeline-error" id="timelineError" hidden>{{ t('timeline_error') }}</p></section>
+{% if complaint.status == 'Resolved' %}<div class="feedback-area"><h3>{{ t('feedback_heading') }}</h3>{% if complaint.feedback_rating %}<p>{{ t('feedback_thanks', rating=complaint.feedback_rating) }}</p>{% if complaint.feedback_comment %}<p class="muted">{{ complaint.feedback_comment }}</p>{% endif %}{% else %}<form method="post" action="{{ url_for('feedback', complaint_id=complaint.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label>{{ t('rating') }}</label><select name="rating" required><option value="">{{ t('choose_rating') }}</option><option value="5">{{ t('rating_5') }}</option><option value="4">{{ t('rating_4') }}</option><option value="3">{{ t('rating_3') }}</option><option value="2">{{ t('rating_2') }}</option><option value="1">{{ t('rating_1') }}</option></select><label>{{ t('feedback_comment') }}</label><textarea name="comment" rows="3" maxlength="1000" placeholder="{{ t('feedback_placeholder') }}"></textarea><button class="button">{{ t('send_feedback') }}</button></form>{% endif %}</div>{% endif %}</section>
+<script>
+(() => {
+  const timeline = document.getElementById('complaintTimeline');
+  if (!timeline) return;
+  const list = document.getElementById('timelineList');
+  const error = document.getElementById('timelineError');
+  const endpoint = timeline.dataset.endpoint;
+  const language = timeline.dataset.language;
+  const labels = {
+    en: {status: 'Status updated to', submitted: 'Complaint submitted', escalation: 'Automatically escalated due to a delayed response', attachment: 'Image(s) attached', rating: 'Student feedback received'},
+    hi: {status: 'स्थिति बदली:', submitted: 'शिकायत दर्ज हुई', escalation: 'देरी के कारण शिकायत स्वतः आगे बढ़ाई गई', attachment: 'तस्वीरें जोड़ी गईं', rating: 'विद्यार्थी की प्रतिक्रिया मिली'}
+  }[language] || {};
+  const statusLabels = {
+    en: {Pending: 'Pending', 'In Progress': 'In Progress', Resolved: 'Resolved'},
+    hi: {Pending: 'लंबित', 'In Progress': 'काम जारी', Resolved: 'हल हो गई'}
+  }[language] || {};
+  const describe = (event, index) => {
+    if (event.event_type === 'escalation') return labels.escalation;
+    if (event.event_type === 'attachment') return labels.attachment;
+    if (event.event_type === 'rating') return labels.rating;
+    if (index === 0) return labels.submitted;
+    return `${labels.status} ${statusLabels[event.status] || event.status}`;
+  };
+  const render = (events) => {
+    list.replaceChildren();
+    events.forEach((event, index) => {
+      const item = document.createElement('li');
+      item.className = 'timeline-item';
+      const marker = document.createElement('span');
+      marker.className = 'timeline-marker';
+      marker.setAttribute('aria-hidden', 'true');
+      const content = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = describe(event, index);
+      const date = document.createElement('time');
+      date.textContent = event.created_at;
+      content.append(title, date);
+      item.append(marker, content);
+      list.appendChild(item);
+    });
+  };
+  const refresh = async () => {
+    try {
+      const response = await fetch(endpoint, {headers: {'Accept': 'application/json'}});
+      if (!response.ok) throw new Error('Timeline request failed');
+      const data = await response.json();
+      render(data.events);
+      error.hidden = true;
+    } catch (failure) {
+      error.hidden = false;
+    }
+  };
+  refresh();
+  window.setInterval(refresh, 20000);
+})();
+</script>
+{% else %}<div class="empty-state">{{ t('not_found') }}</div>{% endif %}{% endif %}{% endblock %}

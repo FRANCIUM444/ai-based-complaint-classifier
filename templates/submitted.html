@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block title %}{{ t('submitted') }}{% endblock %}{% block content %}
+<section class="result-card"><div class="success-icon">✓</div><p class="eyebrow">{{ t('submitted') }}</p><h1>{{ t('submitted_heading_first') }}<br><span>{{ t('submitted_heading_second') }}</span></h1><p class="muted">{{ t('submitted_copy') }}</p>
+<div class="ticket"><small>{{ t('your_complaint_id') }}</small><strong>#{{ complaint_id }}</strong><span>{{ t('save_number') }}</span></div>
+<div class="result-grid"><div><small>{{ t('predicted_category') }}</small><strong>{{ category }}</strong></div><div><small>{{ t('suggested_priority') }}</small><strong class="priority-{{ priority|lower }}">{{ t(priority|lower) }}</strong></div></div>
+{% if duplicate %}<div class="duplicate-notice">{{ t('possible_duplicate', id=duplicate[0], score=(duplicate[1] * 100)|round|int) }} <a href="{{ url_for('track') }}">{{ t('nav_track') }} ↗</a></div>{% endif %}
+{% if image_count %}<div class="attachment-note">{{ t('images_attached', count=image_count) }}</div>{% endif %}
+<div class="confidence-box email-routing-box">
+<span>Department notification</span>
+<strong>Pending administrator approval</strong>
+<small>No department email is sent when a complaint is submitted. Consolidated batch {{ group_public_id }} currently contains {{ group_report_count }} report(s).</small>
+{% if manual_review %}<small>This report needs manual location or similarity review before it can be grouped.</small>{% endif %}
+<a href="{{ url_for('track') }}">Track your complaint ↗</a>
+</div>
+<div class="confidence-box"><span>{{ t('confidence') }}</span><strong>{{ confidence }}%</strong><small>{{ t('confidence_note') }}</small></div>
+<div class="actions"><a class="button" href="{{ url_for('track') }}">{{ t('track_complaint') }} ↗</a><a class="button secondary" href="{{ url_for('index') }}">{{ t('submit_another') }}</a></div></section>{% endblock %}

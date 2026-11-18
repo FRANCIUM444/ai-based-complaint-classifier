@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ group.public_id }} | Consolidated complaint{% endblock %}
+{% block content %}
+<section class="page-head admin-head">
+  <div>
+    <p class="eyebrow">Consolidated complaint review</p>
+    <h1>{{ group.issue_title }}</h1>
+    <p class="muted">{{ group.public_id }} · {{ group.location or 'Location not identified' }} · {{ department_name }}</p>
+  </div>
+  <div class="admin-actions">
+    <a class="button secondary" href="{{ url_for('admin') }}">Back to dashboard</a>
+    <a class="button" href="{{ url_for('consolidated_group_preview', public_id=group.public_id) }}">Preview Email</a>
+  </div>
+</section>
+<section class="stats-grid consolidated-detail-stats">
+  <div class="stat-card"><small>Reports</small><strong>{{ group.report_count }}</strong></div>
+  <div class="stat-card"><small>Students</small><strong>{{ group.student_count }}</strong></div>
+  <div class="stat-card"><small>Category</small><strong>{{ group.category }}</strong></div>
+  <div class="stat-card"><small>Priority</small><strong>{{ complaints|map(attribute='priority')|unique|join(', ') }}</strong></div>
+</section>
+<section class="panel group-edit-panel">
+  <div class="panel-title"><div><p class="eyebrow">Approval and delivery</p><h2>{{ group.approval_status|replace('_', ' ')|title }} · {{ group.email_status|replace('_', ' ')|title }}</h2></div></div>
+  <p><strong>Department:</strong> {{ department_name }} ({{ group.category }})</p>
+  <p><strong>Recipient:</strong> {{ department_recipient }}</p>
+  {% if is_demo_recipient(department_recipient) %}<p class="demo-mode-badge">Demo Mode – Email Not Actually Sent</p>{% endif %}
+  <p><strong>Group created:</strong> {{ group.created_at }} · <strong>Batch ID:</strong> {{ group.notification_id }} · <strong>Send attempts:</strong> {{ group.send_attempts }}</p>
+  {% if group.approval_admin_id %}<p><strong>Approved by:</strong> {{ group.approval_admin_id }} · <strong>At:</strong> {{ group.approved_at }}</p>{% endif %}
+  {% if group.smtp_result %}<p><strong>SMTP result:</strong> {{ group.smtp_result }}</p>{% endif %}
+  {% if attempts %}<div class="table-wrap"><table><thead><tr><th>Attempt</th><th>Recipient</th><th>Started</th><th>Completed</th><th>Result</th></tr></thead><tbody>
+    {% for attempt in attempts %}<tr><td>#{{ attempt.attempt_number }}</td><td>{{ attempt.recipient }}</td><td>{{ attempt.started_at }}</td><td>{{ attempt.completed_at or 'In progress' }}</td><td>{{ attempt.smtp_result or 'Awaiting SMTP result' }}{% if attempt.smtp_accepted %} · Accepted{% elif attempt.smtp_accepted == 0 %} · Not accepted{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>{% endif %}
+  {% if group.manual_review %}<div class="duplicate-notice"><strong>Manual review required.</strong> {{ group.review_note }}{% if group.similarity_score is not none %} Similarity: {{ (group.similarity_score * 100)|round|int }}%.{% endif %}</div>{% endif %}
+  {% if group.matched_group_id %}<p class="muted">Related pending group was considered during duplicate review.</p>{% endif %}
+  {% if group.approval_status == 'pending_approval' %}
+  <form method="post" action="{{ url_for('edit_consolidated_group', public_id=group.public_id) }}" class="group-edit-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Consolidated issue title<input name="issue_title" maxlength="160" value="{{ group.issue_title }}" required></label>
+    <label>Consolidated summary<textarea name="summary" maxlength="2000" rows="4" required>{{ group.summary }}</textarea></label>
+    <button class="button secondary" type="submit">Save edits</button>
+  </form>
+  <div class="group-actions approval-actions">
+    <form method="post" action="{{ url_for('approve_consolidated_group', public_id=group.public_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="button" type="submit">{% if is_demo_recipient(department_recipient) %}Approve (Demo Mode){% else %}Approve &amp; Send{% endif %}</button>
+    </form>
+    <form method="post" action="{{ url_for('reject_consolidated_group', public_id=group.public_id) }}" class="reject-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input name="reason" maxlength="1000" placeholder="Reason for rejection" required>
+      <button class="button danger-button" type="submit">Reject</button>
+    </form>
+  </div>
+  {% elif group.approval_status == 'approved' and group.email_status == 'failed' %}
+  <form method="post" action="{{ url_for('retry_consolidated_group', public_id=group.public_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="button" type="submit">Retry approved notification</button>
+  </form>
+  {% elif group.email_status == 'demo_mode' %}
+  <p class="demo-mode-badge">Demo Mode – Email Not Actually Sent</p>
+  {% elif group.email_status == 'sent' %}
+  <p class="success-note">Sent successfully at {{ group.sent_at }}.</p>
+  {% elif group.approval_status == 'rejected' %}
+  <p><strong>Rejection reason:</strong> {{ group.rejection_reason }}</p>
+  {% endif %}
+</section>
+<section class="panel table-panel">
+  <div class="panel-title"><div><p class="eyebrow">Original reports</p><h2>Individual complaints</h2><p class="muted small-muted">Student descriptions and tracking records remain unchanged.</p></div></div>
+  <div class="table-wrap"><table><thead><tr><th>Complaint ID</th><th>Submitted</th><th>Description</th><th>Priority</th><th>Tracking status</th><th>Similarity</th><th>Record</th></tr></thead><tbody>
+  {% for complaint in complaints %}<tr>
+    <td><strong>#{{ complaint.complaint_id }}</strong></td>
+    <td>{{ complaint.created_at }}</td>
+    <td class="complaint-cell">{{ complaint.complaint_text }}</td>
+    <td>{{ complaint.priority }}</td><td>{{ complaint.status }}</td>
+    <td>{% if complaint.similarity_score is not none %}{{ (complaint.similarity_score * 100)|round|int }}%{% else %}—{% endif %}</td>
+    <td><a href="{{ url_for('admin', q=complaint.complaint_id) }}">Find in complaint inbox</a></td>
+  </tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}

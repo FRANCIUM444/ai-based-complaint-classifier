@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Email preview | {{ group.public_id }}{% endblock %}
+{% block content %}
+<section class="page-head admin-head">
+  <div><p class="eyebrow">Email preview</p><h1>{{ group.public_id }}</h1><p class="muted">This preview is generated from the same content used for delivery.</p></div>
+  <div class="admin-actions"><a class="button secondary" href="{{ url_for('consolidated_group_detail', public_id=group.public_id) }}">Back to group</a></div>
+</section>
+<section class="panel email-preview-panel">
+  <dl class="email-headers">
+    <dt>To</dt><dd>{{ recipient }}{% if is_demo_recipient(recipient) %}<br><span class="demo-mode-badge">Demo Mode – Email Not Actually Sent</span>{% endif %}</dd>
+    <dt>Department</dt><dd>{{ department_name }}</dd>
+    <dt>Subject</dt><dd>{{ email_subject }}</dd>
+    <dt>Batch</dt><dd>{{ group.notification_id }}</dd>
+  </dl>
+  <h2>HTML email</h2>
+  <iframe class="email-preview-frame" title="Rendered consolidated email" srcdoc="{{ email_html|e }}"></iframe>
+  <details class="plain-email-details"><summary>Plain-text fallback</summary><pre>{{ email_text }}</pre></details>
+  {% if group.approval_status == 'pending_approval' %}
+  {% if is_demo_recipient(recipient) %}<p class="demo-mode-badge">Demo Mode – Email Not Actually Sent</p>{% endif %}
+  <form method="post" action="{{ url_for('approve_consolidated_group', public_id=group.public_id) }}" class="preview-approve-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="button" type="submit">{% if is_demo_recipient(recipient) %}Approve (Demo Mode){% else %}Approve &amp; Send{% endif %}</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

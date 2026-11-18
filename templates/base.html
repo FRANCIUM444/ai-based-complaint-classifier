@@ -1,0 +1,81 @@
+<!doctype html><html lang="{{ language }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}CampusCare{% endblock %} | Complaint Classifier</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script></head><body>
+<header class="topbar"><a class="brand" href="{{ url_for('index') }}"><span class="brand-icon">C</span> CampusCare</a>
+<nav aria-label="Main navigation">
+{% if student_session %}
+<a href="{{ url_for('submit_page') }}"><span aria-hidden="true">⌂</span> {{ t('nav_submit') }}</a><a href="{{ url_for('track') }}"><span aria-hidden="true">↗</span> {{ t('nav_track') }}</a><a class="{% if request.endpoint == 'student_dashboard' %}active{% endif %}" href="{{ url_for('student_dashboard') }}"><span aria-hidden="true">▦</span> {{ t('nav_dashboard') }}</a><a href="{{ url_for('student_profile') }}"><span aria-hidden="true">♙</span> {{ t('profile') }}</a>
+{% elif admin_session %}
+<a href="{{ url_for('index') }}"><span aria-hidden="true">⌂</span> {{ t('home') }}</a><a class="{% if request.endpoint == 'admin' %}active{% endif %}" href="{{ url_for('admin') }}"><span aria-hidden="true">▦</span> {{ t('nav_dashboard') }}</a>
+{% else %}
+<a class="{% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}"><span aria-hidden="true">⌂</span> {{ t('home') }}</a><a href="{{ url_for('student_login') }}"><span aria-hidden="true">♙</span> {{ t('student_login') }}</a><a href="{{ url_for('student_register') }}"><span aria-hidden="true">✚</span> {{ t('student_register') }}</a>
+{% endif %}
+<a class="{% if request.endpoint == 'about' %}active{% endif %}" href="{{ url_for('about') }}"><span aria-hidden="true">✳</span> {{ t('nav_about') }}</a>
+{% if admin_session %}<form class="nav-logout-form" action="{{ url_for('logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="nav-logout" type="submit"><span aria-hidden="true">↪</span> {{ t('nav_logout') }}</button></form>{% elif student_session %}<form class="nav-logout-form" action="{{ url_for('student_logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="nav-logout" type="submit"><span aria-hidden="true">↪</span> {{ t('nav_logout') }}</button></form>{% else %}<a class="{% if request.endpoint == 'login' %}active{% endif %}" href="{{ url_for('login') }}"><span aria-hidden="true">♙</span> {{ t('nav_admin') }}</a>{% endif %}
+</nav>
+<form class="language-switch" action="{{ url_for('set_language', language='hi' if language == 'en' else 'en') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ request.full_path }}"><button type="submit" lang="{{ 'hi' if language == 'en' else 'en' }}">{{ t('language') }}</button></form></header>
+<main class="container">{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}{% endif %}{% endwith %}
+{% block content %}{% endblock %}</main><footer>{{ t('footer') }}</footer>
+<aside class="assistant-widget" aria-label="{{ t('assistant_title') }}">
+<button class="assistant-toggle" id="assistantToggle" type="button" aria-expanded="false" aria-controls="assistantPanel" aria-label="{{ t('assistant_open') }}"><span aria-hidden="true">✦</span><span class="assistant-toggle-label">{{ t('assistant_title') }}</span></button>
+<section class="assistant-panel" id="assistantPanel" hidden>
+<header><div><span class="assistant-orb" aria-hidden="true">✦</span><strong>{{ t('assistant_title') }}</strong></div><button class="assistant-close" id="assistantClose" type="button" aria-label="Close">×</button></header>
+<div class="assistant-messages" id="assistantMessages" aria-live="polite"><p class="assistant-message assistant-bot">{{ t('assistant_welcome') }}</p></div>
+<form id="assistantForm"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label class="sr-only" for="assistantInput">{{ t('assistant_placeholder') }}</label><input id="assistantInput" name="message" maxlength="500" placeholder="{{ t('assistant_placeholder') }}" autocomplete="off" required><button type="submit">{{ t('assistant_send') }}</button></form>
+</section></aside>
+<script>
+(() => {
+  const toggle = document.getElementById('assistantToggle');
+  const panel = document.getElementById('assistantPanel');
+  const close = document.getElementById('assistantClose');
+  const form = document.getElementById('assistantForm');
+  const input = document.getElementById('assistantInput');
+  const messages = document.getElementById('assistantMessages');
+  const language = {{ language|tojson }};
+  const csrfToken = {{ csrf_token|tojson }};
+  const addMessage = (text, sender) => {
+    const item = document.createElement('p');
+    item.className = `assistant-message assistant-${sender}`;
+    item.textContent = text;
+    messages.appendChild(item);
+    messages.scrollTop = messages.scrollHeight;
+    return item;
+  };
+  const setOpen = (open) => {
+    panel.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    if (open) input.focus();
+  };
+  toggle.addEventListener('click', () => setOpen(panel.hidden));
+  close.addEventListener('click', () => setOpen(false));
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    addMessage(text, 'user');
+    input.value = '';
+    const pending = addMessage('…', 'bot');
+    try {
+      const response = await fetch('{{ url_for("assistant") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
+        body: JSON.stringify({message: text, language})
+      });
+      const data = await response.json();
+      pending.textContent = response.ok ? data.reply : (data.error || {{ t('assistant_error')|tojson }});
+    } catch (error) {
+      pending.textContent = {{ t('assistant_error')|tojson }};
+    }
+    messages.scrollTop = messages.scrollHeight;
+  });
+})();
+document.querySelectorAll('[data-password-target]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const field = document.getElementById(button.dataset.passwordTarget);
+    if (!field) return;
+    field.type = field.type === 'password' ? 'text' : 'password';
+    button.setAttribute('aria-pressed', String(field.type === 'text'));
+  });
+});
+</script></body></html>

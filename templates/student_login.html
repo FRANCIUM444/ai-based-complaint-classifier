@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% block title %}{{ t('login_title_student') }}{% endblock %}{% block content %}
+<section class="auth-card student-login-card"><div class="auth-mark" aria-hidden="true">⌁</div><p class="eyebrow">{{ t('student_login')|upper }}</p><h1>{{ t('login_heading_student') }}</h1><p class="muted">{{ t('login_copy_student') }}</p>
+<form id="studentLoginForm" method="post" class="auth-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="next" value="{{ next_url }}">
+<label>{{ t('college_email') }}<input id="studentEmail" name="college_email" type="email" required maxlength="254" autocomplete="email" placeholder="you@college.edu" value="{{ submitted_email|default('') }}"></label>
+<label class="password-field">{{ t('password') }}<span class="password-input"><input id="studentPassword" name="password" type="password" required maxlength="128" autocomplete="current-password"><button type="button" class="password-toggle" data-password-target="studentPassword" aria-label="{{ t('show_password') }}">◉</button></span></label>
+<button class="button auth-submit" type="submit">{{ t('sign_in') }} ↗</button></form>
+<p class="auth-switch">{{ t('no_account') }} <a href="{{ url_for('student_register') }}">{{ t('register_here') }}</a></p></section>
+{% if show_signup_reminder|default(false) %}
+<div class="signup-modal-backdrop" id="signupReminder" role="presentation">
+  <section class="signup-modal" role="dialog" aria-modal="true" aria-labelledby="signupModalTitle" aria-describedby="signupModalCopy">
+    <div class="signup-modal-icon" aria-hidden="true">🎓</div>
+    <p class="eyebrow">{{ t('student_login')|upper }}</p>
+    <h2 id="signupModalTitle">{{ t('signup_modal_heading') }}</h2>
+    <p class="signup-modal-intro">{{ t('signup_modal_intro') }}</p>
+    <p class="signup-modal-copy" id="signupModalCopy">{{ t('signup_modal_copy') }}</p>
+    <div class="signup-modal-actions">
+      <a class="button signup-create" href="{{ url_for('student_register') }}">{{ t('create_account') }} ↗</a>
+      <button class="button secondary signup-retry" id="signupTryAgain" type="button">{{ t('try_again') }}</button>
+    </div>
+    <p class="signup-modal-login">{{ t('already_have_account') }} <a href="#studentLoginForm" id="signupLoginHere">{{ t('log_in_here') }}</a></p>
+  </section>
+</div>
+<script>
+(() => {
+  const modal = document.getElementById('signupReminder');
+  const retry = document.getElementById('signupTryAgain');
+  const email = document.getElementById('studentEmail');
+  const closeModal = () => {
+    modal.hidden = true;
+    email.focus();
+  };
+  retry.addEventListener('click', closeModal);
+  document.getElementById('signupLoginHere').addEventListener('click', closeModal);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !modal.hidden) closeModal();
+  });
+  retry.focus();
+})();
+</script>
+{% endif %}
+{% endblock %}

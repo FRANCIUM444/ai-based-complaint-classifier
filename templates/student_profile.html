@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block title %}{{ t('profile_title') }}{% endblock %}{% block content %}
+<section class="auth-card profile-card"><div class="auth-mark" aria-hidden="true">♙</div><p class="eyebrow">{{ t('profile_details')|upper }}</p><h1>{{ t('profile_title') }}</h1><p class="muted">{{ t('profile_copy') }}</p>
+<form method="post" class="auth-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<label>{{ t('full_name') }}<input name="full_name" value="{{ student.full_name }}" required maxlength="120" autocomplete="name"></label>
+<label>{{ t('college_email') }}<input name="college_email" type="email" value="{{ student.college_email }}" required maxlength="254" autocomplete="email"></label>
+<label>{{ t('enrollment_number') }}<input name="enrollment_number" value="{{ student.enrollment_number }}" required minlength="3" maxlength="32"></label>
+<div class="auth-form-grid"><label>{{ t('department_year') }}<input name="department" value="{{ student.department }}" required maxlength="100"></label><label>{{ t('academic_year') }}<input name="academic_year" value="{{ student.academic_year }}" required maxlength="40"></label></div>
+<details class="password-change"><summary>{{ t('change_password') }}</summary><p>{{ t('password_change_hint') }}</p><label>{{ t('current_password') }}<input name="current_password" type="password" autocomplete="current-password"></label><label>{{ t('new_password') }}<span class="password-input"><input id="newPassword" name="new_password" type="password" minlength="10" maxlength="128" autocomplete="new-password"><button type="button" class="password-toggle" data-password-target="newPassword" aria-label="{{ t('show_password') }}">◉</button></span></label></details>
+<button class="button auth-submit" type="submit">{{ t('save_profile') }}</button></form></section>{% endblock %}
